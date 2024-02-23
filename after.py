@@ -80,72 +80,48 @@ class WAVAudioExporter(AudioExporter):
         print(f"Exporting audio data in WAV format to {folder}.")
 
 
-class ExporterFactory(ABC):
-    """
-    Factory that represents a combination of video and audio codecs.
-    The factory doesn't maintain any of the instances it creates.
-    """
+class CreateVideoExporter:
+    """Class to create video exporters based on the desired quality."""
 
-    @abstractmethod
-    def get_video_exporter(self) -> VideoExporter:
-        """Returns a new video exporter belonging to this factory."""
-
-    @abstractmethod
-    def get_audio_exporter(self) -> AudioExporter:
-        """Returns a new audio exporter belonging to this factory."""
-
-
-class FastExporter(ExporterFactory):
-    """Factory aimed at providing a high speed, lower quality export."""
-
-    def get_video_exporter(self) -> VideoExporter:
-        return H264BPVideoExporter()
-
-    def get_audio_exporter(self) -> AudioExporter:
-        return AACAudioExporter()
-
-
-class HighQualityExporter(ExporterFactory):
-    """Factory aimed at providing a slower speed, high quality export."""
-
-    def get_video_exporter(self) -> VideoExporter:
-        return H264Hi422PVideoExporter()
-
-    def get_audio_exporter(self) -> AudioExporter:
-        return AACAudioExporter()
-
-
-class MasterQualityExporter(ExporterFactory):
-    """Factory aimed at providing a low speed, master quality export."""
-
-    def get_video_exporter(self) -> VideoExporter:
+    def create_video_expoter(self, export_quality: str) -> VideoExporter:
+        """Create a video exporter based on the desired quality."""
+        if export_quality == "low":
+            return H264BPVideoExporter()
+        if export_quality == "high":
+            return H264Hi422PVideoExporter()
         return LosslessVideoExporter()
 
-    def get_audio_exporter(self) -> AudioExporter:
+
+class CreateAudioExporter:
+    """Class to create audio exporters based on the desired quality."""
+
+    def create_audio_expoter(self, export_quality: str) -> AudioExporter:
+        """Create an audio exporter based on the desired quality."""
+        if export_quality in {"low", "high"}:
+            return AACAudioExporter()
         return WAVAudioExporter()
 
 
-def read_factory() -> ExporterFactory:
-    """Constructs an exporter factory based on the user's preference."""
-
-    factories = {
-        "low": FastExporter(),
-        "high": HighQualityExporter(),
-        "master": MasterQualityExporter(),
-    }
-    while True:
-        export_quality = input("Enter desired output quality (low, high, master): ")
-        if export_quality in factories:
-            return factories[export_quality]
-        print(f"Unknown output quality option: {export_quality}.")
-
-
-def main(fac: ExporterFactory) -> None:
+def main() -> None:
     """Main function."""
 
-    # retrieve the exporters
-    video_exporter = fac.get_video_exporter()
-    audio_exporter = fac.get_audio_exporter()
+    # read the desired export quality
+    export_quality: str
+    while True:
+        export_quality = input("Enter desired output quality (low, high, master): ")
+        if export_quality in {"low", "high", "master"}:
+            break
+        print(f"Unknown output quality option: {export_quality}.")
+
+    # create the video and audio exporters
+    video_exporter: VideoExporter
+    audio_exporter: AudioExporter
+
+    video_exporter_creator = CreateVideoExporter()
+    audio_exporter_creator = CreateAudioExporter()
+
+    video_exporter = video_exporter_creator.create_video_expoter(export_quality)
+    audio_exporter = audio_exporter_creator.create_audio_expoter(export_quality)
 
     # prepare the export
     video_exporter.prepare_export("placeholder_for_video_data")
@@ -158,8 +134,4 @@ def main(fac: ExporterFactory) -> None:
 
 
 if __name__ == "__main__":
-    # create the factory
-    factory = read_factory()
-
-    # perform the exporting job
-    main(factory)
+    main()
