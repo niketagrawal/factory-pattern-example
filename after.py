@@ -80,32 +80,52 @@ class WAVAudioExporter(AudioExporter):
         print(f"Exporting audio data in WAV format to {folder}.")
 
 
-class CreateVideoExporter:
-    """Class to create video exporters based on the desired quality."""
+class CreateExporter(ABC):
+    """Class to create exporters based on the desired quality."""
 
-    def create_video_expoter(self, export_quality: str) -> VideoExporter:
-        """Create a video exporter based on the desired quality."""
-        if export_quality == "low":
-            return H264BPVideoExporter()
-        if export_quality == "high":
-            return H264Hi422PVideoExporter()
-        return LosslessVideoExporter()
+    @abstractmethod
+    def create_video_exporter(self) -> VideoExporter:
+        """Creates video exporter based on the desired quality."""
+        pass
+
+    @abstractmethod
+    def create_audio_exporter(self) -> AudioExporter:
+        """Creates audio exporter based on the desired quality."""
+        pass
 
 
-class CreateAudioExporter:
-    """Class to create audio exporters based on the desired quality."""
+class CreateHighQualityExporter(CreateExporter):
+    """Class to create exporters based for high quality output."""
 
-    def create_audio_expoter(self, export_quality: str) -> AudioExporter:
-        """Create an audio exporter based on the desired quality."""
-        if export_quality in {"low", "high"}:
-            return AACAudioExporter()
+    def create_video_exporter(self) -> VideoExporter:
+        return H264Hi422PVideoExporter()
+
+    def create_audio_exporter(self) -> AudioExporter:
         return WAVAudioExporter()
 
 
-def main() -> None:
-    """Main function."""
+class CreateLowQualityExporter(CreateExporter):
+    """Class to create exporters based for low quality output."""
 
-    # read the desired export quality
+    def create_video_exporter(self) -> VideoExporter:
+        return H264BPVideoExporter()
+
+    def create_audio_exporter(self) -> AudioExporter:
+        return AACAudioExporter()
+
+
+class CreateMasterQualityExporter(CreateExporter):
+    """Class to create exporters based for master quality output."""
+
+    def create_video_exporter(self) -> VideoExporter:
+        return LosslessVideoExporter()
+
+    def create_audio_exporter(self) -> AudioExporter:
+        return WAVAudioExporter()
+
+
+def get_exporter_from_output_quality() -> CreateExporter:
+    """Get desired output quality from user and creates exporter based on the desired quality."""
     export_quality: str
     while True:
         export_quality = input("Enter desired output quality (low, high, master): ")
@@ -113,24 +133,41 @@ def main() -> None:
             break
         print(f"Unknown output quality option: {export_quality}.")
 
-    # create the video and audio exporters
-    video_exporter: VideoExporter
-    audio_exporter: AudioExporter
+    if export_quality == "low":
+        return CreateLowQualityExporter()
+    if export_quality == "high":
+        return CreateHighQualityExporter()
+    if export_quality == "master":
+        return CreateMasterQualityExporter()
 
-    video_exporter_creator = CreateVideoExporter()
-    audio_exporter_creator = CreateAudioExporter()
 
-    video_exporter = video_exporter_creator.create_video_expoter(export_quality)
-    audio_exporter = audio_exporter_creator.create_audio_expoter(export_quality)
+def prepare_export(exporter: CreateExporter, video_data, audio_data) -> None:
+    """Prepare the export based on the desired quality."""
+    video_exporter = exporter.create_video_exporter()
+    audio_exporter = exporter.create_audio_exporter()
+    video_exporter.prepare_export(video_data)
+    audio_exporter.prepare_export(audio_data)
 
-    # prepare the export
-    video_exporter.prepare_export("placeholder_for_video_data")
-    audio_exporter.prepare_export("placeholder_for_audio_data")
 
-    # do the export
-    folder = pathlib.Path("/usr/tmp/video")
+def do_export(exporter: CreateExporter, folder: pathlib.Path) -> None:
+    """Do the export based on the desired quality."""
+    video_exporter = exporter.create_video_exporter()
+    audio_exporter = exporter.create_audio_exporter()
     video_exporter.do_export(folder)
     audio_exporter.do_export(folder)
+
+
+def main() -> None:
+    """Main function."""
+
+    # create the exporter from the desired output quality
+    exporter = get_exporter_from_output_quality()
+
+    # prepare export
+    prepare_export(exporter, "placeholder_for_video_data", "placeholder_for_audio_data")
+
+    # do the export
+    do_export(exporter, pathlib.Path("/usr/tmp/video"))
 
 
 if __name__ == "__main__":
